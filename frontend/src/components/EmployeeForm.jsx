@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useDispatch } from "react-redux";
 import { addEmployee, updateEmployee } from "../store/employeeSlice";
 import Cropper from "react-easy-crop";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,7 +13,8 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
     phone: "",
     department: "",
     salary: "",
-    skills: "",
+    skills: [],
+    education: [],
     profileImage: null,
   });
 
@@ -28,14 +29,49 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleAddSkill = () => {
+    setFormData({ ...formData, skills: [...formData.skills, ""] });
+  };
+
+  const handleSkillChange = (index, value) => {
+    const updatedSkills = [...formData.skills];
+    updatedSkills[index] = value;
+    setFormData({ ...formData, skills: updatedSkills });
+  };
+
+  const handleRemoveSkill = (index) => {
+    const updatedSkills = formData.skills.filter((_, i) => i !== index);
+    setFormData({ ...formData, skills: updatedSkills });
+  };
+
+  const handleAddEducation = () => {
+    setFormData({
+      ...formData,
+      education: [
+        ...formData.education,
+        { degree: "", institution: "", yearOfCompletion: "" },
+      ],
+    });
+  };
+
+  const handleEducationChange = (index, field, value) => {
+    const updatedEducation = [...formData.education];
+    updatedEducation[index][field] = value;
+    setFormData({ ...formData, education: updatedEducation });
+  };
+
+  const handleRemoveEducation = (index) => {
+    const updatedEducation = formData.education.filter((_, i) => i !== index);
+    setFormData({ ...formData, education: updatedEducation });
+  };
+
   const handleFileChange = async (e) => {
     if (e.target.files.length > 0) {
       const file = e.target.files[0];
 
-      // Compress image before uploading
       const options = {
-        maxSizeMB: 1, // Reduce file size to 1MB
-        maxWidthOrHeight: 800, // Resize image if needed
+        maxSizeMB: 1,
+        maxWidthOrHeight: 800,
         useWebWorker: true,
       };
 
@@ -54,14 +90,11 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const employeeData = { ...formData, skills: formData.skills.split(",") };
-
     if (editingEmployee) {
-      dispatch(updateEmployee({ id: editingEmployee._id, data: employeeData }));
+      dispatch(updateEmployee({ id: editingEmployee._id, data: formData }));
     } else {
-      dispatch(addEmployee(employeeData));
+      dispatch(addEmployee(formData));
     }
-
     setEditing(null);
     setFormData({
       name: "",
@@ -69,7 +102,8 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
       phone: "",
       department: "",
       salary: "",
-      skills: "",
+      skills: [],
+      education: [],
       profileImage: null,
     });
   };
@@ -121,16 +155,84 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
             onChange={handleChange}
             className="w-full p-2 border rounded mb-2"
           />
-          <input
-            type="text"
-            name="skills"
-            placeholder="Skills (comma-separated)"
-            value={formData.skills}
-            onChange={handleChange}
-            className="w-full p-2 border rounded mb-2"
-          />
 
-          {/* File Upload */}
+          <label>Skills:</label>
+          {formData.skills.map((skill, index) => (
+            <div key={index} className="flex mb-2">
+              <input
+                type="text"
+                value={skill}
+                onChange={(e) => handleSkillChange(index, e.target.value)}
+                className="w-full p-2 border rounded"
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveSkill(index)}
+                className="ml-2 bg-red-500 text-white p-2 rounded"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={handleAddSkill}
+            className="w-full bg-blue-500 text-white p-2 rounded mb-2"
+          >
+            Add Skill
+          </button>
+
+          <label>Education:</label>
+          {formData.education.map((edu, index) => (
+            <div key={index} className="mb-2">
+              <input
+                type="text"
+                placeholder="Degree"
+                value={edu.degree}
+                onChange={(e) =>
+                  handleEducationChange(index, "degree", e.target.value)
+                }
+                className="w-full p-2 border rounded mb-1"
+              />
+              <input
+                type="text"
+                placeholder="Institution"
+                value={edu.institution}
+                onChange={(e) =>
+                  handleEducationChange(index, "institution", e.target.value)
+                }
+                className="w-full p-2 border rounded mb-1"
+              />
+              <input
+                type="number"
+                placeholder="Year of Completion"
+                value={edu.yearOfCompletion}
+                onChange={(e) =>
+                  handleEducationChange(
+                    index,
+                    "yearOfCompletion",
+                    e.target.value
+                  )
+                }
+                className="w-full p-2 border rounded mb-1"
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveEducation(index)}
+                className="w-full bg-red-500 text-white p-2 rounded"
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={handleAddEducation}
+            className="w-full bg-blue-500 text-white p-2 rounded mb-2"
+          >
+            Add Education
+          </button>
+          {/* file upload */}
           <label className="cursor-pointer bg-gray-200 p-2 rounded block text-center">
             Choose File
             <input
@@ -141,7 +243,7 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
             />
           </label>
 
-          {/* Image Cropper */}
+          {/* image cropper  */}
           {formData.profileImage && (
             <div className="relative w-full h-64 mt-2">
               <Cropper
