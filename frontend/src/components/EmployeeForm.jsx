@@ -1,13 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { useDispatch } from "react-redux";
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { addEmployee, updateEmployee } from "../store/employeeSlice";
+import { setFormData } from "../store/formSlice"; // New Redux action to store form data
 import Cropper from "react-easy-crop";
 import { Card, CardContent } from "@/components/ui/card";
 import imageCompression from "browser-image-compression";
 
 const EmployeeForm = ({ editingEmployee, setEditing }) => {
   const dispatch = useDispatch();
-  const [formData, setFormData] = useState({
+  const storedFormData = useSelector((state) => state.formData);
+
+  const [formData, setLocalFormData] = useState({
     name: "",
     email: "",
     phone: "",
@@ -22,47 +25,73 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
   const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
-    if (editingEmployee) setFormData(editingEmployee);
-  }, [editingEmployee]);
+    if (editingEmployee) {
+      setLocalFormData(editingEmployee);
+      dispatch(setFormData(editingEmployee)); // Store initial edit data in Redux
+    } else if (storedFormData) {
+      setLocalFormData(storedFormData); // Restore unsaved form data
+    }
+  }, [editingEmployee, storedFormData, dispatch]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const updatedData = { ...formData, [e.target.name]: e.target.value };
+    setLocalFormData(updatedData);
+    dispatch(setFormData(updatedData)); // Store data in Redux
   };
 
   const handleAddSkill = () => {
-    setFormData({ ...formData, skills: [...formData.skills, ""] });
+    const updatedData = { ...formData, skills: [...formData.skills, ""] };
+    setLocalFormData(updatedData);
+    dispatch(setFormData(updatedData));
   };
 
   const handleSkillChange = (index, value) => {
     const updatedSkills = [...formData.skills];
     updatedSkills[index] = value;
-    setFormData({ ...formData, skills: updatedSkills });
+    const updatedData = { ...formData, skills: updatedSkills };
+    setLocalFormData(updatedData);
+    dispatch(setFormData(updatedData));
   };
 
   const handleRemoveSkill = (index) => {
-    const updatedSkills = formData.skills.filter((_, i) => i !== index);
-    setFormData({ ...formData, skills: updatedSkills });
+    const updatedData = {
+      ...formData,
+      skills: formData.skills.filter((_, i) => i !== index),
+    };
+    setLocalFormData(updatedData);
+    dispatch(setFormData(updatedData));
   };
 
   const handleAddEducation = () => {
-    setFormData({
+    const updatedData = {
       ...formData,
       education: [
         ...formData.education,
         { degree: "", institution: "", yearOfCompletion: "" },
       ],
-    });
+    };
+    setLocalFormData(updatedData);
+    dispatch(setFormData(updatedData));
   };
 
-  const handleEducationChange = (index, field, value) => {
-    const updatedEducation = [...formData.education];
-    updatedEducation[index][field] = value;
-    setFormData({ ...formData, education: updatedEducation });
-  };
+ const handleEducationChange = (index, field, value) => {
+   const updatedEducation = formData.education.map((edu, i) =>
+     i === index ? { ...edu, [field]: value } : edu
+   );
+
+   const updatedData = { ...formData, education: updatedEducation };
+   setLocalFormData(updatedData);
+   dispatch(setFormData(updatedData));
+ };
+
 
   const handleRemoveEducation = (index) => {
-    const updatedEducation = formData.education.filter((_, i) => i !== index);
-    setFormData({ ...formData, education: updatedEducation });
+    const updatedData = {
+      ...formData,
+      education: formData.education.filter((_, i) => i !== index),
+    };
+    setLocalFormData(updatedData);
+    dispatch(setFormData(updatedData));
   };
 
   const handleFileChange = async (e) => {
@@ -79,7 +108,9 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
         const compressedFile = await imageCompression(file, options);
         const reader = new FileReader();
         reader.onload = () => {
-          setFormData({ ...formData, profileImage: reader.result });
+          const updatedData = { ...formData, profileImage: reader.result };
+          setLocalFormData(updatedData);
+          dispatch(setFormData(updatedData));
         };
         reader.readAsDataURL(compressedFile);
       } catch (error) {
@@ -95,8 +126,9 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
     } else {
       dispatch(addEmployee(formData));
     }
+    dispatch(setFormData(null)); // Clear stored data after submission
     setEditing(null);
-    setFormData({
+    setLocalFormData({
       name: "",
       email: "",
       phone: "",
@@ -181,8 +213,6 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
           >
             Add Skill
           </button>
-
-          <label>Education:</label>
           {formData.education.map((edu, index) => (
             <div key={index} className="mb-2">
               <input
@@ -232,7 +262,8 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
           >
             Add Education
           </button>
-          {/* file upload */}
+
+          {/* File Upload */}
           <label className="cursor-pointer bg-gray-200 p-2 rounded block text-center">
             Choose File
             <input
@@ -243,7 +274,7 @@ const EmployeeForm = ({ editingEmployee, setEditing }) => {
             />
           </label>
 
-          {/* image cropper  */}
+          {/* Image Cropper */}
           {formData.profileImage && (
             <div className="relative w-full h-64 mt-2">
               <Cropper
